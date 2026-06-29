@@ -106,6 +106,4 @@ def _register_error_handlers(app):
     def server_error(e):
         return render_template("errors/500.html"), 500
 
-@app.route('/health')
-def health_check():
-    return 'OK', 200
+
