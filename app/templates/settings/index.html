@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="tabs">
+  {% for t in ['shop','locations','tax','invoice','loyalty','email','sms','danger'] %}
+  <a class="tab-link {{ 'active' if tab == t }}" href="{{ url_for('settings.index', tab=t) }}" style="text-transform:capitalize;">{{ t }}</a>
+  {% endfor %}
+</div>
+
+<div class="card" style="max-width:560px;">
+
+  {% if tab == 'shop' %}
+  <form method="POST" action="{{ url_for('settings.save_shop') }}">
+    {% include "_csrf.html" %}
+    <div class="field"><label>Shop Name</label><input type="text" name="shop_name" value="{{ settings.shop_name }}" required></div>
+    <div class="field"><label>Address</label><input type="text" name="address" value="{{ settings.address }}"></div>
+    <div class="field"><label>Phone</label><input type="text" name="phone" value="{{ settings.phone }}"></div>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+
+  {% elif tab == 'locations' %}
+  <p style="font-size:13px; color:var(--ink-faint); margin-bottom:14px;">
+    Add each shop location here, then assign staff to a location (Staff → Edit) so
+    sales and repairs can be reported per-location even though every shop shares
+    this same database.
+  </p>
+
+  <form method="POST" action="{{ url_for('settings.add_location') }}" style="margin-bottom:20px;">
+    {% include "_csrf.html" %}
+    <div class="grid grid-2">
+      <input type="text" name="name" placeholder="Location name (e.g. Downtown)" required>
+      <input type="text" name="address" placeholder="Address (optional)">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:8px;">Add Location</button>
+  </form>
+
+  <table>
+    <thead><tr><th>Name</th><th>Address</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for loc in locations %}
+      <tr>
+        <td>{{ loc.name }}</td>
+        <td>{{ loc.address or '—' }}</td>
+        <td>{% if loc.active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-gray">Inactive</span>{% endif %}</td>
+        <td>
+          <form method="POST" action="{{ url_for('settings.toggle_location_active', location_id=loc.id) }}">
+            {% include "_csrf.html" %}
+            <button type="submit" class="btn btn-secondary btn-sm">{{ 'Deactivate' if loc.active else 'Reactivate' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="color:var(--ink-faint); text-align:center; padding:20px;">No locations added yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% elif tab == 'tax' %}
+  <form method="POST" action="{{ url_for('settings.save_tax') }}">
+    {% include "_csrf.html" %}
+    <div class="field"><label>Province</label>
+      <select name="province">
+        {% for code, info in provinces.items() %}
+        <option value="{{ code }}" {{ 'selected' if code == settings.province }}>{{ info.label }} ({{ code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field"><label>Currency Symbol</label><input type="text" name="currency" value="{{ settings.currency }}" maxlength="3"></div>
+    <div class="field checkbox-row"><input type="checkbox" name="tax_inclusive_pricing" id="tip" {{ 'checked' if settings.tax_inclusive_pricing }}><label for="tip" style="margin:0;">Prices include tax</label></div>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+
+  {% elif tab == 'invoice' %}
+  <form method="POST" action="{{ url_for('settings.save_invoice') }}">
+    {% include "_csrf.html" %}
+    <div class="field"><label>Invoice Prefix</label><input type="text" name="invoice_prefix" value="{{ settings.invoice_prefix }}"></div>
+    <div class="field"><label>Next Invoice Number</label><input type="text" value="{{ settings.invoice_next_number }}" disabled></div>
+    <div class="field"><label>Footer Note</label><textarea name="invoice_footer_note" rows="2">{{ settings.invoice_footer_note }}</textarea></div>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+
+  {% elif tab == 'loyalty' %}
+  <form method="POST" action="{{ url_for('settings.save_loyalty') }}">
+    {% include "_csrf.html" %}
+    <div class="field checkbox-row"><input type="checkbox" name="loyalty_enabled" id="le" {{ 'checked' if settings.loyalty_enabled }}><label for="le" style="margin:0;">Loyalty program enabled</label></div>
+    <div class="grid grid-2">
+      <div class="field"><label>Points Earned per $1 Spent</label><input type="number" name="loyalty_points_per_dollar" step="0.1" value="{{ settings.loyalty_points_per_dollar }}"></div>
+      <div class="field"><label>Points Needed for $1 Credit</label><input type="number" name="loyalty_points_redeem_rate" step="1" value="{{ settings.loyalty_points_redeem_rate }}"></div>
+    </div>
+    <p style="font-size:12px; color:var(--ink-faint); margin-bottom:14px;">
+      Example: {{ settings.loyalty_points_per_dollar }} point(s) per $1 spent.
+      {{ settings.loyalty_points_redeem_rate|int }} points = $1.00 store credit.
+      Redemption at checkout is rounded down to the nearest multiple of {{ settings.loyalty_points_redeem_rate|int }}.
+    </p>
+    <button type="submit" class="btn btn-primary">Save Loyalty Settings</button>
+  </form>
+
+  <hr style="border:none; border-top:1px solid var(--border); margin:20px 0;">
+
+  <h4 style="font-size:13px; font-weight:700; margin-bottom:8px;">Manually Issue Store Credit</h4>
+  <form method="POST" action="{{ url_for('settings.manual_issue_credit') }}">
+    {% include "_csrf.html" %}
+    <div style="display:flex; gap:8px;">
+      <input type="text" name="phone" placeholder="Customer phone…" style="flex:1;" required>
+      <input type="number" name="amount" placeholder="$ amount" step="0.01" min="0" style="width:120px;" required>
+      <button type="submit" class="btn btn-secondary btn-sm">Issue</button>
+    </div>
+  </form>
+
+  {% elif tab == 'email' %}
+  <form method="POST" action="{{ url_for('settings.save_email') }}">
+    {% include "_csrf.html" %}
+    <div class="field checkbox-row"><input type="checkbox" name="email_receipts_enabled" id="ee" {{ 'checked' if settings.email_receipts_enabled }}><label for="ee" style="margin:0;">Email receipts enabled</label></div>
+    <p style="font-size:12.5px; color:var(--ink-faint);">SMTP credentials are configured via environment variables (.env), not here, for security.</p>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+
+  {% elif tab == 'sms' %}
+  <form method="POST" action="{{ url_for('settings.save_sms') }}">
+    {% include "_csrf.html" %}
+    <div class="field checkbox-row"><input type="checkbox" name="sms_enabled" id="se" {{ 'checked' if settings.sms_enabled }}><label for="se" style="margin:0;">SMS notifications enabled</label></div>
+    <div class="field"><label>"Ready for Pickup" Template</label>
+      <textarea name="sms_ready_template" rows="2">{{ settings.sms_ready_template }}</textarea>
+      <p style="font-size:11.5px; color:var(--ink-faint); margin-top:4px;">Available: {customer_name}, {device}, {shop_name}</p>
+    </div>
+    <p style="font-size:12.5px; color:var(--ink-faint);">Twilio credentials are configured via environment variables (.env), not here, for security.</p>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+
+  {% elif tab == 'danger' %}
+  <div class="alert alert-red">This permanently deletes all sales, repairs, customers, and inventory data. Staff accounts and settings are kept. This cannot be undone.</div>
+  <form method="POST" action="{{ url_for('settings.clear_data') }}">
+    {% include "_csrf.html" %}
+    <div class="field"><label>Type "DELETE EVERYTHING" to confirm</label><input type="text" name="confirm_text" placeholder="DELETE EVERYTHING"></div>
+    <button type="submit" class="btn btn-red">Clear All Data</button>
+  </form>
+  {% endif %}
+
+</div>
+{% endblock %}

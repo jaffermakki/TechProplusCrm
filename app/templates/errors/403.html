@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Access Denied{% endblock %}
+{% block page_title %}Access Denied{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px; text-align:center;">
+  <h3>You don't have permission to view this page.</h3>
+  <p style="color:var(--ink-faint);">This area is restricted to managers and owners.</p>
+  <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Back to Dashboard</a>
+</div>
+{% endblock %}

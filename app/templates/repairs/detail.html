@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Ticket #{{ repair.ticket_no }}{% endblock %}
+{% block page_title %}#{{ repair.ticket_no }} — {{ repair.device }}{% endblock %}
+{% block page_sub %}
+<p class="page-sub">
+  {{ repair.customer.name }} · {{ repair.status_label }}
+  {% if repair.is_overdue %}<span class="badge badge-red">⚠ Overdue</span>{% endif %}
+  {% if repair.is_under_warranty %}<span class="badge badge-amber">Under Warranty ({{ repair.warranty_days_remaining }}d left)</span>{% endif %}
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Details</h3>
+    <p><strong>Customer:</strong> <a href="{{ url_for('customers.detail', customer_id=repair.customer.id) }}">{{ repair.customer.name }}</a> ({{ repair.customer.phone }})</p>
+    <p><strong>Issue:</strong> {{ repair.issue or '—' }}</p>
+    {% if repair.description %}<p><strong>Internal Notes:</strong> {{ repair.description }}</p>{% endif %}
+    <p><strong>Created:</strong> {{ repair.created_at|datetime }}</p>
+    <p>
+      <strong>Promised By:</strong>
+      {% if repair.promised_by %}
+        <span style="color:{{ 'var(--red)' if repair.is_overdue else 'inherit' }}">{{ repair.promised_by.strftime('%b %d, %Y') }}{{ ' ⚠️ OVERDUE' if repair.is_overdue }}</span>
+      {% else %}—{% endif %}
+    </p>
+    <form method="POST" action="{{ url_for('repairs.set_promised_date', repair_id=repair.id) }}" style="display:flex; gap:8px; align-items:end; margin-top:6px;">
+      {% include "_csrf.html" %}
+      <input type="date" name="promised_by" value="{{ repair.promised_by.strftime('%Y-%m-%d') if repair.promised_by else '' }}" style="flex:1;">
+      <button type="submit" class="btn btn-secondary btn-sm">Update</button>
+    </form>
+
+    <h4 style="margin-top:18px;">Technician</h4>
+    <form method="POST" action="{{ url_for('repairs.assign_technician', repair_id=repair.id) }}" style="display:flex; gap:8px;">
+      {% include "_csrf.html" %}
+      <select name="technician_id" style="flex:1;">
+        <option value="">— Unassigned —</option>
+        {% for t in technicians %}
+        <option value="{{ t.id }}" {{ 'selected' if repair.technician_id == t.id }}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm">Assign</button>
+    </form>
+
+    <h4 style="margin-top:18px;">Status</h4>
+    <form method="POST" action="{{ url_for('repairs.advance', repair_id=repair.id) }}">
+      {% include "_csrf.html" %}
+      <div class="field">
+        <select name="status" id="status-select">
+          {% for s in status_order %}
+          <option value="{{ s }}" {{ 'selected' if s == repair.status }}>{{ status_labels[s] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Note (optional)</label><input type="text" name="note" placeholder="e.g. Waiting on supplier part"></div>
+      {% if request.args.get('confirm_status') %}
+      <div class="field checkbox-row" style="margin-bottom:10px;">
+        <input type="checkbox" name="force" id="force-complete" onchange="document.getElementById('status-select').value='{{ request.args.get('confirm_status') }}'">
+        <label for="force-complete" style="margin:0; color:var(--red);">Confirm: mark completed with no approved/final cost set</label>
+      </div>
+      {% endif %}
+      <button type="submit" class="btn btn-secondary">Update Status</button>
+    </form>
+
+    <h4 style="margin-top:18px;">Status History</h4>
+    {% if history %}
+    <div style="font-size:12.5px; color:var(--ink-soft);">
+      {% for h in history %}
+      <div style="padding:6px 0; border-bottom:1px solid var(--border);">
+        <strong>{{ status_labels.get(h.status, h.status) }}</strong> — {{ h.created_at|datetime }}
+        {% if h.note %}<br><span style="color:var(--ink-faint);">{{ h.note }}</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Parts Used</h3>
+    {% if repair.parts.all() %}
+    <table>
+      <thead><tr><th>Description</th><th>Qty</th><th>Cost</th></tr></thead>
+      <tbody>
+        {% for part in repair.parts %}
+        <tr><td>{{ part.description }}</td><td class="mono">{{ part.qty }}</td><td class="mono">{{ part.unit_cost|money }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--ink-faint)">No parts logged yet.</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('repairs.add_part', repair_id=repair.id) }}" style="margin-top:12px;">
+      {% include "_csrf.html" %}
+      <div class="grid grid-2">
+        <input type="text" name="sku" placeholder="Part SKU" required style="text-transform:uppercase;">
+        <input type="number" name="qty" value="1" min="1">
+      </div>
+      <p style="font-size:11.5px; color:var(--ink-faint); margin-top:4px;">Looks up the part by SKU and deducts stock at this ticket's location.</p>
+      <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:6px;">Add Part</button>
+    </form>
+
+    <h3 style="margin-top:20px;">Costs &amp; Invoicing</h3>
+    <form method="POST" action="{{ url_for('repairs.save_costs_route', repair_id=repair.id) }}">
+      {% include "_csrf.html" %}
+      <div class="field"><label>Estimated Cost</label><input type="number" name="estimated_cost" value="{{ repair.estimated_cost or '' }}" step="0.01" placeholder="Given to customer up front"></div>
+      <div class="field"><label>Approved Cost</label><input type="number" name="approved_cost" value="{{ repair.approved_cost or '' }}" step="0.01" placeholder="Customer signed off on this amount"></div>
+      <div class="field"><label>Final Cost</label><input type="number" name="final_cost" value="{{ repair.final_cost or '' }}" step="0.01" placeholder="What's actually being charged"></div>
+      <button type="submit" class="btn btn-secondary btn-sm">Save Costs</button>
+    </form>
+    <p style="font-size:12px; color:var(--ink-faint); margin-top:8px;">Billable amount (final → approved → estimated): <strong>{{ repair.billable_cost|money }}</strong></p>
+
+    {% if repair.invoice_id %}
+    <p style="margin-top:14px;"><a href="{{ url_for('pos.receipt', invoice_id=repair.invoice_id) }}">View Invoice {{ repair.invoice.invoice_number }} →</a></p>
+    {% else %}
+    <form method="POST" action="{{ url_for('repairs.generate_invoice', repair_id=repair.id) }}" style="margin-top:14px;">
+      {% include "_csrf.html" %}
+      <div class="field">
+        <label>Payment Method</label>
+        <select name="payment_method"><option value="cash">Cash</option><option value="debit">Debit</option><option value="credit">Credit</option></select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Generate Invoice ({{ repair.billable_cost|money }})</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

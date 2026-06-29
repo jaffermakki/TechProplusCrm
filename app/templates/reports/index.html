@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block topbar_actions %}
+{% if current_user.has_role('owner','manager') %}
+<a href="{{ url_for('reports.locations_overview') }}" class="btn btn-secondary btn-sm">All Locations</a>
+{% endif %}
+<a href="{{ url_for('reports.export_csv', start=start.strftime('%Y-%m-%d'), end=end.strftime('%Y-%m-%d')) }}" class="btn btn-secondary btn-sm">Export CSV</a>
+<a href="{{ url_for('reports.export_xlsx', start=start.strftime('%Y-%m-%d'), end=end.strftime('%Y-%m-%d')) }}" class="btn btn-secondary btn-sm">Export Excel</a>
+<a href="{{ url_for('reports.eod') }}" class="btn btn-primary btn-sm" target="_blank">Print EOD</a>
+{% endblock %}
+
+{% block content %}
+<form method="GET" class="grid grid-3" style="max-width:540px; margin-bottom:18px;">
+  <div class="field"><label>From</label><input type="date" name="start" value="{{ start.strftime('%Y-%m-%d') }}"></div>
+  <div class="field"><label>To</label><input type="date" name="end" value="{{ end.strftime('%Y-%m-%d') }}"></div>
+  <div class="field" style="align-self:end;"><button type="submit" class="btn btn-secondary btn-block">Apply</button></div>
+</form>
+
+<div class="grid grid-4" style="margin-bottom:18px;">
+  <div class="card stat-card"><span class="stat-label">Total Sales</span><span class="stat-value">{{ sales.total_sales|money }}</span></div>
+  <div class="card stat-card"><span class="stat-label">Transactions</span><span class="stat-value">{{ sales.count }}</span></div>
+  <div class="card stat-card"><span class="stat-label">Tax Collected</span><span class="stat-value">{{ sales.total_tax|money }}</span></div>
+  <div class="card stat-card"><span class="stat-label">Avg Repair Turnaround</span><span class="stat-value">{{ repair_stats.avg_turnaround_hours or '—' }}h</span></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Sales by Payment Method</h3>
+    <table>
+      <thead><tr><th>Method</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for method, total in sales.by_payment_method.items() %}
+        <tr><td style="text-transform:capitalize;">{{ method }}</td><td class="mono">{{ total|money }}</td></tr>
+        {% else %}<tr><td colspan="2" style="color:var(--ink-faint)">No sales in this range.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Top Products</h3>
+    <table>
+      <thead><tr><th>Product</th><th>Qty</th><th>Revenue</th></tr></thead>
+      <tbody>
+        {% for row in top_products %}
+        <tr><td>{{ row.description }}</td><td class="mono">{{ row.qty }}</td><td class="mono">{{ row.revenue|money }}</td></tr>
+        {% else %}<tr><td colspan="3" style="color:var(--ink-faint)">No data.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

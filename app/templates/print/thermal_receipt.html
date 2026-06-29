@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Receipt {{ invoice.invoice_number }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="print-receipt">
+  <div style="text-align:center;">
+    <strong>{{ settings.shop_name }}</strong><br>
+    {{ settings.address }}<br>
+    {{ settings.phone }}
+  </div>
+  <hr>
+  <div>{{ invoice.invoice_number }}<br>{{ invoice.created_at|datetime }}</div>
+  <hr>
+  {% for item in invoice.items %}
+  <div style="display:flex; justify-content:space-between;">
+    <span>{{ item.qty }}x {{ item.description }}</span>
+    <span>{{ item.line_total|money }}</span>
+  </div>
+  {% endfor %}
+  <hr>
+  <div style="display:flex; justify-content:space-between;"><span>Subtotal</span><span>{{ invoice.subtotal|money }}</span></div>
+  {% if invoice.tax_total %}<div style="display:flex; justify-content:space-between;"><span>Tax</span><span>{{ invoice.tax_total|money }}</span></div>{% endif %}
+  <div style="display:flex; justify-content:space-between; font-weight:700;"><span>TOTAL</span><span>{{ invoice.total|money }}</span></div>
+  <hr>
+  <div style="text-align:center;">{{ settings.invoice_footer_note }}</div>
+
+  <div class="no-print" style="text-align:center; margin-top:16px;">
+    <button class="btn btn-primary" onclick="window.print()">Print</button>
+  </div>
+</div>
+</body>
+</html>

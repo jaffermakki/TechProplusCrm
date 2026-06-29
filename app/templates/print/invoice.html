@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice {{ invoice.invoice_number }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="print-invoice">
+  <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:24px;">
+    <div>
+      <h2 style="margin:0;">{{ settings.shop_name }}</h2>
+      <p style="color:var(--ink-faint); margin:4px 0 0;">{{ settings.address }}</p>
+      <p style="color:var(--ink-faint); margin:0;">{{ settings.phone }}</p>
+    </div>
+    <div style="text-align:right;">
+      <h3 style="margin:0;">Invoice</h3>
+      <p class="mono" style="margin:4px 0 0;">{{ invoice.invoice_number }}</p>
+      <p style="color:var(--ink-faint); margin:0; font-size:13px;">{{ invoice.created_at|datetime }}</p>
+    </div>
+  </div>
+
+  <p><strong>Bill To:</strong> {{ invoice.customer.name if invoice.customer else 'Walk-in Customer' }}</p>
+
+  <table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for item in invoice.items %}
+      <tr><td>{{ item.description }}</td><td class="mono">{{ item.qty }}</td><td class="mono">{{ item.unit_price|money }}</td><td class="mono">{{ item.line_total|money }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top:16px; max-width:280px; margin-left:auto;">
+    <div class="cart-total-row"><span>Subtotal</span><span class="mono">{{ invoice.subtotal|money }}</span></div>
+    {% if invoice.gst_amount %}<div class="cart-total-row"><span>GST</span><span class="mono">{{ invoice.gst_amount|money }}</span></div>{% endif %}
+    {% if invoice.pst_amount %}<div class="cart-total-row"><span>PST</span><span class="mono">{{ invoice.pst_amount|money }}</span></div>{% endif %}
+    {% if invoice.hst_amount %}<div class="cart-total-row"><span>HST</span><span class="mono">{{ invoice.hst_amount|money }}</span></div>{% endif %}
+    {% if invoice.store_credit_used %}<div class="cart-total-row"><span>Store Credit Applied</span><span class="mono">-{{ invoice.store_credit_used|money }}</span></div>{% endif %}
+    <div class="cart-total-row grand"><span>Total</span><span class="mono">{{ invoice.total|money }}</span></div>
+  </div>
+
+  <p style="margin-top:28px; text-align:center; color:var(--ink-faint); font-size:13px;">{{ settings.invoice_footer_note }}</p>
+
+  <div class="no-print" style="text-align:center; margin-top:24px;">
+    <button class="btn btn-primary" onclick="window.print()">Print</button>
+  </div>
+</div>
+</body>
+</html>

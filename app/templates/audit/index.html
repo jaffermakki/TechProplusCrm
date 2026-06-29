@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
+
+{% block content %}
+<div class="card card-flush">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>When</th><th>Staff</th><th>Action</th><th>Detail</th></tr></thead>
+    <tbody>
+      {% for entry in pagination.items %}
+      <tr>
+        <td class="mono">{{ entry.created_at|datetime }}</td>
+        <td>{{ entry.staff.name if entry.staff else 'System' }}</td>
+        <td><span class="badge badge-gray">{{ entry.action }}</span></td>
+        <td>{{ entry.detail }}</td>
+      </tr>
+      {% else %}<tr><td colspan="4" style="color:var(--ink-faint); text-align:center; padding:30px;">No audit entries yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<div style="display:flex; gap:8px; margin-top:14px;">
+  {% if pagination.has_prev %}<a class="btn btn-secondary btn-sm" href="?page={{ pagination.prev_num }}">← Prev</a>{% endif %}
+  <span style="align-self:center; font-size:13px; color:var(--ink-faint);">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+  {% if pagination.has_next %}<a class="btn btn-secondary btn-sm" href="?page={{ pagination.next_num }}">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

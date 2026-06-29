@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Server Error{% endblock %}
+{% block page_title %}Something Went Wrong{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px; text-align:center;">
+  <h3>An unexpected error occurred.</h3>
+  <p style="color:var(--ink-faint);">Try again, or contact your administrator if this keeps happening.</p>
+  <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Back to Dashboard</a>
+</div>
+{% endblock %}

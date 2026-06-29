@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Add Product{% endblock %}
+{% block page_title %}Add Product{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px;">
+  <form method="POST">
+    {% include "_csrf.html" %}
+    <div class="grid grid-2">
+      <div class="field"><label>SKU (optional — auto-generated if blank)</label><input type="text" name="sku"></div>
+      <div class="field"><label>Category</label>
+        <select name="category">{% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    <div class="field"><label>Name</label><input type="text" name="name" required></div>
+    <div class="field"><label>Subcategory (optional)</label><input type="text" name="subcategory"></div>
+    <div class="grid grid-2">
+      <div class="field"><label>Cost</label><input type="number" name="cost" step="0.01" min="0" value="0"></div>
+      <div class="field"><label>Price</label><input type="number" name="price" step="0.01" min="0" value="0" required></div>
+    </div>
+    <div class="field"><label>Reorder Point (applies to all locations)</label><input type="number" name="reorder_point" min="0" value="2"></div>
+
+    <label>Starting Stock per Location</label>
+    {% if locations %}
+    <div class="grid grid-2" style="margin-bottom:14px;">
+      {% for loc in locations %}
+      <div class="field">
+        <label style="font-weight:400;">{{ loc.name }}</label>
+        <input type="number" name="qty_loc_{{ loc.id }}" min="0" value="0">
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--ink-faint); font-size:13px; margin-bottom:14px;">No locations set up yet — add the product first, then set stock once a location exists.</p>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg">Add Product</button>
+  </form>
+</div>
+{% endblock %}

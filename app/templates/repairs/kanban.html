@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Repairs{% endblock %}
+{% block page_title %}Repairs{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('repairs.new_repair') }}" class="btn btn-primary btn-sm">+ New Repair</a>
+{% endblock %}
+
+{% block content %}
+<form method="GET" style="margin-bottom:14px; max-width:380px;">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search by customer, phone, or device…" onchange="this.form.submit()">
+</form>
+
+<div class="kanban-board">
+  {% for status in status_order %}
+  <div class="kanban-col" data-status="{{ status }}">
+    <h4>{{ status_labels[status] }} <span class="badge badge-gray">{{ columns.get(status, [])|length }}</span></h4>
+    {% for r in columns.get(status, []) %}
+    <a href="{{ url_for('repairs.detail', repair_id=r.id) }}" class="kanban-card" style="display:block; text-decoration:none; color:inherit;">
+      <div style="display:flex; justify-content:space-between; align-items:start;">
+        <span class="mono" style="font-size:10px; color:var(--accent); font-weight:700;">#{{ r.ticket_no }}</span>
+        {% if r.is_overdue %}<span class="badge badge-red" style="font-size:10px;">⚠ Overdue</span>{% endif %}
+      </div>
+      <div class="k-device">{{ r.device }}</div>
+      <div class="k-customer">{{ r.customer.name }}</div>
+      {% if r.technician %}<div style="font-size:11px; color:var(--ink-faint);">🧑‍🔧 {{ r.technician.name }}</div>{% endif %}
+      {% if r.promised_by %}<div style="font-size:11px; color:{{ 'var(--red)' if r.is_overdue else 'var(--ink-faint)' }};">📅 {{ r.promised_by.strftime('%b %d') }}</div>{% endif %}
+      {% if r.estimated_cost %}<div style="font-size:11px; font-weight:700; color:var(--green);">{{ r.estimated_cost|money }}</div>{% endif %}
+      {% if r.status != 'COLLECTED' %}
+      <form method="POST" action="{{ url_for('repairs.advance', repair_id=r.id) }}" style="margin-top:8px;" onclick="event.stopPropagation()">
+        {% include "_csrf.html" %}
+        <select name="status" onchange="event.stopPropagation(); this.form.submit()" onclick="event.stopPropagation()" style="font-size:12px; padding:5px 8px;">
+          {% for s in status_order %}
+          <option value="{{ s }}" {{ 'selected' if s == r.status }}>{{ status_labels[s] }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

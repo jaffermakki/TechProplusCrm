@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Inventory{% endblock %}
+{% block page_title %}Inventory{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('inventory.bulk_import') }}" class="btn btn-secondary btn-sm">Bulk Import</a>
+<a href="{{ url_for('inventory.add_product') }}" class="btn btn-primary btn-sm">+ Add Product</a>
+{% endblock %}
+
+{% block content %}
+<form method="GET" style="margin-bottom:14px; max-width:380px;">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search by name or SKU…">
+</form>
+
+{% if not locations %}
+<div class="alert alert-amber">No locations set up yet. Add one in Settings → Locations before tracking stock.</div>
+{% endif %}
+
+<div class="card card-flush">
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th><th>Name</th><th>Category</th><th>Cost</th><th>Price</th>
+        {% for loc in locations %}<th>{{ loc.name }}</th>{% endfor %}
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td class="mono">{{ p.sku }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.category }}</td>
+        <td class="mono">{{ p.cost|money }}</td>
+        <td class="mono">{{ p.price|money }}</td>
+        {% for loc in locations %}
+        {% set qty = stock_lookup.get(p.id, {}).get(loc.id, 0) %}
+        <td class="mono">
+          {{ qty }}
+          {% if qty <= 2 %}<span class="badge badge-amber">Low</span>{% endif %}
+        </td>
+        {% endfor %}
+        <td style="white-space:nowrap;">
+          <a href="{{ url_for('inventory.edit_product', product_id=p.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('adjust-{{ p.id }}').showModal()">Adjust</button>
+        </td>
+      </tr>
+      <dialog id="adjust-{{ p.id }}" style="border:none; border-radius:16px; padding:0;">
+        <form method="POST" action="{{ url_for('inventory.adjust_stock', product_id=p.id) }}" style="padding:20px; width:320px;">
+          {% include "_csrf.html" %}
+          <h4 style="margin-bottom:12px;">Adjust: {{ p.name }}</h4>
+          <div class="field"><label>Location</label>
+            <select name="location_id" required>
+              <option value="">— Choose —</option>
+              {% for loc in locations %}
+              <option value="{{ loc.id }}">{{ loc.name }} (currently {{ stock_lookup.get(p.id, {}).get(loc.id, 0) }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field"><label>Change (+/-)</label><input type="number" name="delta" required></div>
+          <div class="field"><label>Reason</label><input type="text" name="reason" placeholder="e.g. Damaged, Recount"></div>
+          <div style="display:flex; gap:8px;">
+            <button type="submit" class="btn btn-primary btn-block">Save</button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('adjust-{{ p.id }}').close()">Cancel</button>
+          </div>
+        </form>
+      </dialog>
+      {% else %}
+      <tr><td colspan="{{ 6 + locations|length }}" style="text-align:center; color:var(--ink-faint); padding:30px;">No products yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>{% block title %}Dashboard{% endblock %} · {{ shop_settings.shop_name if shop_settings else 'Tech-Pro+' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="flash-stack no-print">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category if category in ['green','red','amber','blue'] else 'blue' }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div id="app">
+
+  <div id="sidebar-backdrop" class="no-print" onclick="document.getElementById('sidebar').classList.remove('open'); this.classList.remove('open')"></div>
+
+  <aside id="sidebar" class="no-print">
+    <div class="sidebar-logo">
+      <div class="brand-mark">Tech-Pro<span class="dot">+</span></div>
+      <div class="shop-name">{{ shop_settings.shop_name if shop_settings else 'Your Shop' }}</div>
+    </div>
+
+    <nav id="nav">
+      <a class="nav-item {{ 'active' if request.endpoint == 'dashboard.index' }}" href="{{ url_for('dashboard.index') }}">
+        <span class="nav-icon">⌂</span> Dashboard
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint == 'pos.index' }}" href="{{ url_for('pos.index') }}">
+        <span class="nav-icon">🛒</span> POS / Sales
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('repairs.') }}" href="{{ url_for('repairs.kanban') }}">
+        <span class="nav-icon">🔧</span> Repairs
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('inventory.') }}" href="{{ url_for('inventory.index') }}">
+        <span class="nav-icon">📦</span> Inventory
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('customers.') }}" href="{{ url_for('customers.index') }}">
+        <span class="nav-icon">👤</span> Customers
+      </a>
+
+      <div class="nav-section-label">Money</div>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('reports.') }}" href="{{ url_for('reports.index') }}">
+        <span class="nav-icon">📊</span> Reports
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('cashup.') }}" href="{{ url_for('cashup.index') }}">
+        <span class="nav-icon">💵</span> Cash-Up
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('refunds.') }}" href="{{ url_for('refunds.index') }}">
+        <span class="nav-icon">↩</span> Refunds
+      </a>
+
+      {% if current_user.is_authenticated and current_user.has_role('owner','manager') %}
+      <div class="nav-section-label">Admin</div>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('staff.') }}" href="{{ url_for('staff.index') }}">
+        <span class="nav-icon">🧑‍💼</span> Staff
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('audit.') }}" href="{{ url_for('audit.index') }}">
+        <span class="nav-icon">📜</span> Audit Log
+      </a>
+      <a class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('settings.') }}" href="{{ url_for('settings.index') }}">
+        <span class="nav-icon">⚙</span> Settings
+      </a>
+      {% endif %}
+    </nav>
+
+    {% if current_user.is_authenticated %}
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="user-avatar">{{ current_user.initial }}</div>
+        <div class="user-info">
+          <div class="u-name">{{ current_user.name }}</div>
+          <div class="u-role">{{ current_user.role }}</div>
+        </div>
+      </div>
+      <a class="logout-link" href="{{ url_for('auth.logout') }}">Sign out</a>
+    </div>
+    {% endif %}
+  </aside>
+
+  <div id="main">
+    <header class="topbar no-print">
+      <button id="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-backdrop').classList.add('open')" aria-label="Open menu">☰</button>
+      <div>
+        <h2>{% block page_title %}Dashboard{% endblock %}</h2>
+        {% block page_sub %}{% endblock %}
+      </div>
+      <div class="topbar-search">
+        <input type="search" id="global-search" placeholder="Search customers, repairs, invoices…" autocomplete="off">
+      </div>
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    </header>
+
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  {% if current_user.is_authenticated %}
+  <nav class="mobile-tabbar no-print">
+    <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}"><span class="tab-icon">⌂</span>Home</a>
+    <a href="{{ url_for('pos.index') }}" class="{{ 'active' if request.endpoint == 'pos.index' }}"><span class="tab-icon">🛒</span>POS</a>
+    <a href="{{ url_for('repairs.kanban') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('repairs.') }}"><span class="tab-icon">🔧</span>Repairs</a>
+    <a href="{{ url_for('inventory.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('inventory.') }}"><span class="tab-icon">📦</span>Stock</a>
+    <a href="{{ url_for('customers.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('customers.') }}"><span class="tab-icon">👤</span>Customers</a>
+  </nav>
+  {% endif %}
+
+</div>
+
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

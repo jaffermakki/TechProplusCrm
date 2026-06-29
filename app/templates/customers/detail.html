@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }}{% endblock %}
+{% block page_title %}{{ customer.name }}{% endblock %}
+{% block page_sub %}<p class="page-sub">{{ customer.phone }} {{ '· ' + customer.email if customer.email }}</p>{% endblock %}
+
+{% block content %}
+<div class="grid grid-4" style="margin-bottom:16px;">
+  <div class="card stat-card">
+    <span class="stat-label">Total Spent</span>
+    <span class="stat-value">{{ customer.spent|money }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Loyalty Points</span>
+    <span class="stat-value">{{ customer.loyalty_points_balance }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Store Credit</span>
+    <span class="stat-value">{{ customer.store_credit_balance|money }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Last Visit</span>
+    <span class="stat-value" style="font-size:15px;">{{ customer.last_visit|date if customer.last_visit else '—' }}</span>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Notes</h3>
+    <form method="POST" action="{{ url_for('customers.save_notes', customer_id=customer.id) }}">
+      {% include "_csrf.html" %}
+      <textarea name="notes" rows="4">{{ customer.notes }}</textarea>
+      <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:8px;">Save Notes</button>
+    </form>
+
+    <h3 style="margin-top:20px;">Issue Store Credit</h3>
+    <form method="POST" action="{{ url_for('customers.issue_credit', customer_id=customer.id) }}">
+      {% include "_csrf.html" %}
+      <div class="grid grid-2">
+        <input type="number" name="amount" placeholder="Amount" step="0.01" min="0" required>
+        <input type="text" name="reason" placeholder="Reason">
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:8px;">Issue Credit</button>
+    </form>
+
+    <h3 style="margin-top:20px;">Store Credit History</h3>
+    {% if store_credit_history %}
+    <table>
+      <thead><tr><th>Record</th><th>Amount</th><th>Reason</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for entry in store_credit_history %}
+        <tr>
+          <td class="mono">{{ entry.record_number or (entry.invoice.invoice_number if entry.invoice else '—') }}</td>
+          <td class="mono" style="color:{{ 'var(--green)' if entry.amount > 0 else 'var(--red)' }}">{{ entry.amount|money }}</td>
+          <td>{{ entry.reason or '—' }}</td>
+          <td>{{ entry.created_at|date }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:var(--ink-faint)">No store credit activity yet.</p>{% endif %}
+
+    <h3 style="margin-top:20px;">Loyalty Points History</h3>
+    {% if loyalty_history %}
+    <table>
+      <thead><tr><th>Points</th><th>Reason</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for entry in loyalty_history %}
+        <tr>
+          <td class="mono" style="color:{{ 'var(--green)' if entry.points > 0 else 'var(--red)' }}">{{ '%+d'|format(entry.points) }}</td>
+          <td>{{ entry.reason or '—' }}</td>
+          <td>{{ entry.created_at|date }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:var(--ink-faint)">No loyalty activity yet.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Recent Invoices</h3>
+    {% if invoices %}
+    <table>
+      <thead><tr><th>#</th><th>Total</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr><td class="mono"><a href="{{ url_for('pos.receipt', invoice_id=inv.id) }}">{{ inv.invoice_number }}</a></td><td class="mono">{{ inv.total|money }}</td><td>{{ inv.created_at|date }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:var(--ink-faint)">No invoices yet.</p>{% endif %}
+
+    <h3 style="margin-top:20px;">Repairs</h3>
+    {% if repairs %}
+    <table>
+      <thead><tr><th>Device</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for r in repairs %}
+        <tr><td><a href="{{ url_for('repairs.detail', repair_id=r.id) }}">{{ r.device }}</a></td><td><span class="badge badge-blue">{{ r.status_label }}</span></td><td>{{ r.created_at|date }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:var(--ink-faint)">No repairs yet.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

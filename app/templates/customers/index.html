@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Customers{% endblock %}
+{% block page_title %}Customers{% endblock %}
+{% block topbar_actions %}<a href="{{ url_for('customers.add_customer') }}" class="btn btn-primary btn-sm">+ Add Customer</a>{% endblock %}
+
+{% block content %}
+<form method="GET" style="margin-bottom:14px; max-width:380px;">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search by name or phone…">
+</form>
+
+<div class="card card-flush">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Phone</th><th>Loyalty Pts</th><th>Store Credit</th><th></th></tr></thead>
+    <tbody>
+      {% for c in customers %}
+      <tr>
+        <td><a href="{{ url_for('customers.detail', customer_id=c.id) }}">{{ c.name }}</a></td>
+        <td>{{ c.phone }}</td>
+        <td class="mono">{{ c.loyalty_points_balance }}</td>
+        <td class="mono">{{ c.store_credit_balance|money }}</td>
+        <td><a href="{{ url_for('customers.detail', customer_id=c.id) }}" class="btn btn-secondary btn-sm">View</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center; color:var(--ink-faint); padding:30px;">No customers yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

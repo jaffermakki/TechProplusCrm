@@ -1,0 +1,32 @@
+# Render Blueprint - lets Render auto-configure the web service from this repo
+# instead of filling in settings by hand. See render.com/docs/blueprint-spec
+#
+# Usage: push this repo to GitHub, then in Render choose "New > Blueprint" and
+# point it at the repo. Render reads this file and sets everything up.
+#
+# This does NOT create a database - Render's free Postgres expires after 30 days,
+# which is a bad fit for real sales data, so this deploys the app only. Create your
+# database on Neon (neon.com, free, no expiry) instead and paste its connection
+# string into the DATABASE_URL environment variable in the Render dashboard after
+# the first deploy - see MULTI_LOCATION_SETUP.md for that part.
+
+services:
+  - type: web
+    name: techpro-crm
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false  # set manually in the dashboard - your Neon connection string
+      - key: SHOP_NAME
+        value: "Your Shop"
+      - key: SHOP_PROVINCE
+        value: "ON"
+      - key: SHOP_CURRENCY
+        value: "$"

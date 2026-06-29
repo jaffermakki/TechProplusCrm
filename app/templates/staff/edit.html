@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Edit Staff{% endblock %}
+{% block page_title %}Edit {{ member.name }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:420px;">
+  <form method="POST">
+    {% include "_csrf.html" %}
+    <div class="field"><label>Name</label><input type="text" name="name" value="{{ member.name }}" required></div>
+    <div class="field"><label>New PIN (leave blank to keep current)</label><input type="text" name="pin" inputmode="numeric" pattern="[0-9]*"></div>
+    <div class="field"><label>Role</label>
+      <select name="role">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == member.role }}>{{ r }}</option>{% endfor %}</select>
+    </div>
+    <div class="field"><label>Location</label>
+      <select name="location_id">
+        <option value="">— Unassigned —</option>
+        {% for loc in locations %}
+        <option value="{{ loc.id }}" {{ 'selected' if member.location_id == loc.id }}>{{ loc.name }}</option>
+        {% endfor %}
+      </select>
+      <p style="font-size:11.5px; color:var(--ink-faint); margin-top:4px;">Sales and repairs this staff member creates are tagged with this location.</p>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block btn-lg">Save Changes</button>
+  </form>
+</div>
+{% endblock %}

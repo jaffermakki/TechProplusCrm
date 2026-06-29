@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}<p class="page-sub">Today's overview</p>{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-4" style="margin-bottom:14px;">
+  <div class="card stat-card">
+    <span class="stat-label">Today's Sales</span>
+    <span class="stat-value">{{ todays_sales_total|money }}</span>
+    <span class="stat-sub">{{ todays_sales_count }} transaction{{ 's' if todays_sales_count != 1 }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Open Repairs</span>
+    <span class="stat-value">{{ open_repairs_count }}</span>
+    <span class="stat-sub"><a href="{{ url_for('repairs.kanban') }}">View board →</a></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Ready for Pickup</span>
+    <span class="stat-value">{{ ready_repairs_count }}</span>
+    <span class="stat-sub">Notify customers</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Low Stock Items</span>
+    <span class="stat-value">{{ low_stock_products|length }}</span>
+    <span class="stat-sub"><a href="{{ url_for('inventory.index') }}">View inventory →</a></span>
+  </div>
+</div>
+
+{% if overdue_repairs %}
+<div class="alert alert-red" style="margin-bottom:18px;">
+  ⚠️ <strong>{{ overdue_repairs|length }} repair{{ 's' if overdue_repairs|length != 1 }} overdue:</strong>
+  {% for r in overdue_repairs[:3] %}
+  <a href="{{ url_for('repairs.detail', repair_id=r.id) }}" style="color:inherit; text-decoration:underline;">#{{ r.ticket_no }} ({{ r.customer.name }}, due {{ r.promised_by.strftime('%b %d') }})</a>{{ ', ' if not loop.last }}
+  {% endfor %}
+  {% if overdue_repairs|length > 3 %}…{% endif %}
+</div>
+{% endif %}
+
+<div class="grid grid-2" style="margin-bottom:18px;">
+  <div class="card">
+    <h3 style="margin-bottom:10px;">Last 7 Days</h3>
+    <canvas id="weekChart" height="90"></canvas>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:10px;">Repairs by Status</h3>
+    <canvas id="statusChart" height="90"></canvas>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Recent Sales</h3>
+    {% if recent_invoices %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>When</th></tr></thead>
+        <tbody>
+          {% for inv in recent_invoices %}
+          <tr>
+            <td class="mono"><a href="{{ url_for('pos.receipt', invoice_id=inv.id) }}">{{ inv.invoice_number }}</a></td>
+            <td>{{ inv.customer.name if inv.customer else 'Walk-in' }}</td>
+            <td class="mono">{{ inv.total|money }}</td>
+            <td>{{ inv.created_at|datetime }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color:var(--ink-faint)">No sales yet today.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Low Stock</h3>
+    {% if low_stock_products %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Product</th><th>Total On Hand</th></tr></thead>
+        <tbody>
+          {% for p in low_stock_products %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td class="mono">{{ p.total_qty_on_hand }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color:var(--ink-faint)">Everything is well stocked. 🎉</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const ctx = document.getElementById('weekChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ seven_day_labels|tojson }},
+    datasets: [{
+      label: 'Sales',
+      data: {{ seven_day_totals|tojson }},
+      backgroundColor: '#3D7DF2cc',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { callback: (v) => '$' + v } } }
+  }
+});
+
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+  type: 'doughnut',
+  data: {
+    labels: {{ status_chart_labels|tojson }},
+    datasets: [{
+      data: {{ status_chart_values|tojson }},
+      backgroundColor: ['#8A90A0', '#3D7DF2', '#F2A341', '#9B59B6', '#2BA866', '#1d4ed8', '#D8DCE3'],
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+  }
+});
+</script>
+{% endblock %}

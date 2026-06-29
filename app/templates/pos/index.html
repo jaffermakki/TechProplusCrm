@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}POS{% endblock %}
+{% block page_title %}Point of Sale{% endblock %}
+
+{% block content %}
+{% if no_location_assigned %}
+<div class="alert alert-amber">
+  Your staff account has no location assigned, so stock can't be checked or sold here.
+  Ask an owner/manager to assign you a location in Staff settings.
+</div>
+{% endif %}
+<div class="pos-layout">
+
+  <div>
+    <input type="search" id="product-filter" placeholder="Filter products by name or SKU…" style="margin-bottom:14px;">
+    <div class="product-grid" id="product-grid">
+      {% for p in products %}
+      <form method="POST" action="{{ url_for('pos.add_to_cart', product_id=p.id) }}" class="product-tile-form" data-name="{{ p.name|lower }}" data-sku="{{ p.sku|lower }}">
+        {% include "_csrf.html" %}
+        <button type="submit" class="product-tile" style="border:1px solid var(--border); width:100%; text-align:left; background:var(--surface);" {{ 'disabled' if no_location_assigned }}>
+          <span class="p-name">{{ p.name }}</span>
+          <span class="p-price">{{ p.price|money }}</span>
+          <span class="p-stock">{{ stock_by_product.get(p.id, 0) }} in stock here</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="cart-panel card">
+    <h3 style="margin-bottom:10px;">Cart</h3>
+
+    <form method="POST" action="{{ url_for('pos.set_customer') }}" style="margin-bottom:12px;">
+      {% include "_csrf.html" %}
+      <label>Customer (optional)</label>
+      <select name="customer_id" onchange="this.form.submit()">
+        <option value="">Walk-in</option>
+        {% for c in [customer] if customer %}
+        <option value="{{ c.id }}" selected>{{ c.name }} — {{ c.phone }}</option>
+        {% endfor %}
+      </select>
+      <input type="search" id="pos-customer-search" placeholder="Search customer by name/phone…" style="margin-top:6px;" autocomplete="off">
+      <div id="pos-customer-results"></div>
+    </form>
+
+    {% if not cart_lines %}
+      <p style="color:var(--ink-faint); font-size:13.5px;">Cart is empty. Tap a product to add it.</p>
+    {% else %}
+      {% for line in cart_lines %}
+      <div class="cart-line">
+        <span class="c-name">{{ line.product.name }}</span>
+        <div class="c-qty">
+          <form method="POST" action="{{ url_for('pos.change_qty', product_id=line.product.id) }}">
+            {% include "_csrf.html" %}
+            <input type="hidden" name="delta" value="-1">
+            <button type="submit">−</button>
+          </form>
+          <span class="mono">{{ line.qty }}</span>
+          <form method="POST" action="{{ url_for('pos.change_qty', product_id=line.product.id) }}">
+            {% include "_csrf.html" %}
+            <input type="hidden" name="delta" value="1">
+            <button type="submit">+</button>
+          </form>
+        </div>
+        <span class="mono" style="width:64px; text-align:right;">{{ (line.product.price * line.qty)|money }}</span>
+      </div>
+      {% endfor %}
+
+      {% if totals %}
+      <div style="margin-top:14px;">
+        <div class="cart-total-row"><span>Subtotal</span><span class="mono">{{ totals.subtotal|money }}</span></div>
+        {% if totals.loyalty_discount %}<div class="cart-total-row"><span>Loyalty Discount</span><span class="mono">-{{ totals.loyalty_discount|money }}</span></div>{% endif %}
+        {% if totals.gst %}<div class="cart-total-row"><span>GST</span><span class="mono">{{ totals.gst|money }}</span></div>{% endif %}
+        {% if totals.pst %}<div class="cart-total-row"><span>PST</span><span class="mono">{{ totals.pst|money }}</span></div>{% endif %}
+        {% if totals.hst %}<div class="cart-total-row"><span>HST</span><span class="mono">{{ totals.hst|money }}</span></div>{% endif %}
+        {% if totals.store_credit_used %}<div class="cart-total-row"><span>Store Credit Applied</span><span class="mono">-{{ totals.store_credit_used|money }}</span></div>{% endif %}
+        <div class="cart-total-row grand"><span>Total</span><span class="mono" id="grand-total-amt" data-total="{{ totals.total }}">{{ totals.total|money }}</span></div>
+      </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('pos.checkout') }}" style="margin-top:16px;">
+        {% include "_csrf.html" %}
+        <div class="field">
+          <label>Payment Method</label>
+          <select name="payment_method" id="payment-method-select" onchange="document.getElementById('tendered-row').style.display = this.value === 'cash' ? 'block' : 'none'">
+            <option value="cash">Cash</option>
+            <option value="debit">Debit</option>
+            <option value="credit">Credit</option>
+            {% if customer and customer.store_credit_balance > 0 %}
+            <option value="store_credit">Store Credit</option>
+            {% endif %}
+          </select>
+        </div>
+
+        <div class="field" id="tendered-row">
+          <label>Cash Tendered (optional — for change calc)</label>
+          <input type="number" name="tendered" id="tendered-input" min="0" step="0.01" placeholder="0.00" oninput="updateChangeDisplay()">
+          <p id="change-display" style="font-size:13px; color:var(--green); margin-top:4px; display:none;"></p>
+        </div>
+
+        <details style="margin-bottom:12px;">
+          <summary style="font-size:12.5px; color:var(--ink-faint); cursor:pointer;">Split payment (optional)</summary>
+          <div class="grid grid-2" style="margin-top:8px;">
+            <select name="split_method">
+              <option value="">No split</option>
+              <option value="cash">Cash</option>
+              <option value="debit">Debit</option>
+              <option value="credit">Credit</option>
+            </select>
+            <input type="number" name="split_amount" min="0" step="0.01" placeholder="Amount on 2nd method">
+          </div>
+        </details>
+
+        {% if customer and customer.store_credit_balance > 0 %}
+        <div class="field">
+          <label>Use Store Credit (balance {{ customer.store_credit_balance|money }})</label>
+          <input type="number" name="store_credit_used" min="0" step="0.01" max="{{ customer.store_credit_balance }}" value="0">
+        </div>
+        {% endif %}
+
+        {% if customer and max_redeemable_points > 0 %}
+        <div class="field">
+          <label>Redeem Loyalty Points (balance {{ customer.loyalty_points_balance }}, max redeemable {{ max_redeemable_points }})</label>
+          <input type="number" name="loyalty_points_redeemed" min="0" max="{{ max_redeemable_points }}" step="{{ settings.loyalty_points_redeem_rate|int }}" value="0">
+          <p style="font-size:11.5px; color:var(--ink-faint); margin-top:4px;">
+            Must be redeemed in multiples of {{ settings.loyalty_points_redeem_rate|int }} ({{ settings.loyalty_points_redeem_rate|int }} pts = $1.00). Amounts are rounded down.
+          </p>
+        </div>
+        {% elif customer and customer.loyalty_points_balance > 0 %}
+        <p style="font-size:12px; color:var(--ink-faint);">
+          {{ customer.loyalty_points_balance }} points — need at least {{ settings.loyalty_points_redeem_rate|int }} to redeem.
+        </p>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Complete Sale</button>
+      </form>
+
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <form method="POST" action="{{ url_for('pos.hold_cart') }}" style="flex:1;">
+          {% include "_csrf.html" %}
+          <button type="submit" class="btn btn-secondary btn-block">Hold Cart</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('pos.clear_cart') }}" style="flex:1;">
+          {% include "_csrf.html" %}
+          <button type="submit" class="btn btn-secondary btn-block" style="color:var(--red)">Clear</button>
+        </form>
+      </div>
+    {% endif %}
+
+    {% if held_carts %}
+    <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:12px;">
+      <h4 style="font-size:12.5px; color:var(--ink-faint); text-transform:uppercase;">Held Carts</h4>
+      {% for held in held_carts %}
+      <form method="POST" action="{{ url_for('pos.recall_cart', held_id=held.id) }}" style="margin-bottom:6px;">
+        {% include "_csrf.html" %}
+        <button type="submit" class="btn btn-secondary btn-sm btn-block" style="justify-content:space-between;">
+          <span>{{ held.label or ('Cart #' + held.id|string) }}</span>
+          <span style="color:var(--ink-faint)">{{ held.created_at|datetime }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function updateChangeDisplay() {
+  const totalEl = document.getElementById('grand-total-amt');
+  const tenderedInput = document.getElementById('tendered-input');
+  const display = document.getElementById('change-display');
+  if (!totalEl || !tenderedInput || !display) return;
+
+  const total = parseFloat(totalEl.dataset.total || '0');
+  const tendered = parseFloat(tenderedInput.value || '0');
+
+  if (tendered >= total && total > 0 && tenderedInput.value !== '') {
+    display.style.display = 'block';
+    display.textContent = `Change due: $${(tendered - total).toFixed(2)}`;
+  } else {
+    display.style.display = 'none';
+  }
+}
+
+document.getElementById('product-filter').addEventListener('input', function () {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.product-tile-form').forEach(form => {
+    const match = form.dataset.name.includes(q) || form.dataset.sku.includes(q);
+    form.style.display = match ? '' : 'none';
+  });
+});
+
+const custSearch = document.getElementById('pos-customer-search');
+const custResults = document.getElementById('pos-customer-results');
+let custTimer = null;
+custSearch.addEventListener('input', function () {
+  clearTimeout(custTimer);
+  const q = this.value.trim();
+  if (q.length < 2) { custResults.innerHTML = ''; return; }
+  custTimer = setTimeout(() => {
+    fetch(`{{ url_for('pos.search_customers') }}?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(items => {
+        custResults.innerHTML = items.map(c => `
+          <form method="POST" action="{{ url_for('pos.set_customer') }}" style="margin-top:4px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="customer_id" value="${c.id}">
+            <button type="submit" class="btn btn-secondary btn-sm btn-block" style="justify-content:space-between;">
+              <span>${c.name}</span><span style="color:var(--ink-faint)">${c.phone || ''}</span>
+            </button>
+          </form>`).join('');
+      });
+  }, 200);
+});
+</script>
+{% endblock %}

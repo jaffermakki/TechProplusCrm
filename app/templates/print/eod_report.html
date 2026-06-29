@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>End of Day Report</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="print-invoice">
+  <h2>End of Day Report</h2>
+  <p style="color:var(--ink-faint);">{{ day.strftime('%A, %B %d, %Y') }}</p>
+
+  <div class="grid grid-3" style="margin:18px 0;">
+    <div><strong>Total Sales</strong><br>{{ summary.total_sales|money }}</div>
+    <div><strong>Transactions</strong><br>{{ summary.count }}</div>
+    <div><strong>Tax Collected</strong><br>{{ summary.total_tax|money }}</div>
+  </div>
+
+  <h4>By Payment Method</h4>
+  <table>
+    <thead><tr><th>Method</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for method, total in summary.by_payment_method.items() %}
+      <tr><td style="text-transform:capitalize;">{{ method }}</td><td class="mono">{{ total|money }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h4 style="margin-top:18px;">Transactions</h4>
+  <table>
+    <thead><tr><th>Invoice</th><th>Time</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for inv in summary.invoices %}
+      <tr><td class="mono">{{ inv.invoice_number }}</td><td>{{ inv.created_at.strftime('%I:%M %p') }}</td><td class="mono">{{ inv.total|money }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="no-print" style="text-align:center; margin-top:24px;">
+    <button class="btn btn-primary" onclick="window.print()">Print</button>
+  </div>
+</div>
+</body>
+</html>

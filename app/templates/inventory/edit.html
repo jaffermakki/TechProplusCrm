@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Edit Product{% endblock %}
+{% block page_title %}Edit Product{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px;">
+  <form method="POST">
+    {% include "_csrf.html" %}
+    <div class="field"><label>SKU</label><input type="text" value="{{ product.sku }}" disabled></div>
+    <div class="field"><label>Category</label>
+      <select name="category">
+        {% for c in categories %}<option value="{{ c }}" {{ 'selected' if c == product.category }}>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field"><label>Name</label><input type="text" name="name" value="{{ product.name }}" required></div>
+    <div class="field"><label>Subcategory</label><input type="text" name="subcategory" value="{{ product.subcategory or '' }}"></div>
+    <div class="grid grid-2">
+      <div class="field"><label>Cost</label><input type="number" name="cost" step="0.01" min="0" value="{{ product.cost }}"></div>
+      <div class="field"><label>Price</label><input type="number" name="price" step="0.01" min="0" value="{{ product.price }}" required></div>
+    </div>
+
+    <label>Current Stock by Location (read-only — use "Adjust" from the Inventory page to change counts)</label>
+    {% if locations %}
+    <div class="grid grid-2" style="margin-bottom:14px;">
+      {% for loc in locations %}
+      <div class="field">
+        <label style="font-weight:400;">{{ loc.name }}</label>
+        <input type="text" value="{{ product.qty_at(loc.id) }}" disabled>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="field"><label>Reorder Point (applies to all locations)</label><input type="number" name="reorder_point" min="0" value="{{ product.stock_at(locations[0].id).reorder_point if locations else 2 }}"></div>
+    <div class="field checkbox-row"><input type="checkbox" name="active" id="active" {{ 'checked' if product.active }}><label for="active" style="margin:0;">Active</label></div>
+    <button type="submit" class="btn btn-primary btn-block btn-lg">Save Changes</button>
+  </form>
+</div>
+{% endblock %}

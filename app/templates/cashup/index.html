@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Cash-Up{% endblock %}
+{% block page_title %}Cash-Up{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    {% if open_session %}
+    <h3>Session #{{ open_session.id }} — Open</h3>
+    <p style="color:var(--ink-faint); font-size:13px;">Opened {{ open_session.opened_at|datetime }} · Float {{ open_session.opening_float|money }}</p>
+    <p>Expected cash so far: <strong class="mono">{{ (open_session.opening_float|float + open_session.cash_sales_total())|money }}</strong></p>
+
+    <form method="POST" action="{{ url_for('cashup.close_session', session_id=open_session.id) }}" style="margin-top:14px;">
+      {% include "_csrf.html" %}
+      <div class="field"><label>Counted Cash</label><input type="number" name="counted_cash" step="0.01" min="0" required></div>
+      <div class="field"><label>Notes</label><textarea name="notes" rows="2"></textarea></div>
+      <button type="submit" class="btn btn-primary btn-block">Close Session</button>
+    </form>
+    {% else %}
+    <h3>Open a Cash Session</h3>
+    <form method="POST" action="{{ url_for('cashup.open_session') }}">
+      {% include "_csrf.html" %}
+      <div class="field"><label>Opening Float</label><input type="number" name="opening_float" step="0.01" min="0" value="0" required></div>
+      <button type="submit" class="btn btn-primary btn-block">Open Session</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Recent Sessions</h3>
+    <table>
+      <thead><tr><th>#</th><th>Staff</th><th>Opened</th><th>Variance</th></tr></thead>
+      <tbody>
+        {% for s in recent_sessions %}
+        <tr>
+          <td class="mono">{{ s.id }}</td>
+          <td>{{ s.staff.name }}</td>
+          <td>{{ s.opened_at|date }}</td>
+          <td class="mono">
+            {% if s.variance is not none %}
+              <span class="badge {{ 'badge-green' if s.variance == 0 else ('badge-red' if s.variance < 0 else 'badge-amber') }}">{{ s.variance|money }}</span>
+            {% else %}<span class="badge badge-gray">Open</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

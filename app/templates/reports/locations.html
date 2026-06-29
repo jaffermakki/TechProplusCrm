@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}All Locations{% endblock %}
+{% block page_title %}All Locations{% endblock %}
+{% block page_sub %}<p class="page-sub">{{ start.strftime('%b %d') }} – {{ end.strftime('%b %d, %Y') }}</p>{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('reports.locations_trend') }}" class="btn btn-primary btn-sm">Compare Over Time</a>
+{% endblock %}
+
+{% block content %}
+<form method="GET" class="grid grid-3" style="max-width:540px; margin-bottom:18px;">
+  <div class="field"><label>From</label><input type="date" name="start" value="{{ start.strftime('%Y-%m-%d') }}"></div>
+  <div class="field"><label>To</label><input type="date" name="end" value="{{ end.strftime('%Y-%m-%d') }}"></div>
+  <div class="field" style="align-self:end;"><button type="submit" class="btn btn-secondary btn-block">Apply</button></div>
+</form>
+
+<div class="card stat-card" style="margin-bottom:16px;">
+  <span class="stat-label">Total Sales — All Locations</span>
+  <span class="stat-value">{{ grand_total|money }}</span>
+</div>
+
+<h3 style="margin-bottom:10px;">Sales by Location</h3>
+{% if sales_rows %}
+<div class="grid" style="margin-bottom:20px;">
+  {% for row in sales_rows %}
+  <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <div style="font-weight:700; font-size:15px;">{{ row.name }}</div>
+      <div style="font-size:12.5px; color:var(--ink-faint);">{{ row.count }} sale{{ 's' if row.count != 1 }}</div>
+    </div>
+    <div class="mono" style="font-size:20px; font-weight:800;">{{ row.total|money }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p style="color:var(--ink-faint); margin-bottom:20px;">No sales in this date range yet.</p>
+{% endif %}
+
+<h3 style="margin-bottom:10px;">Repairs by Location</h3>
+{% if repair_rows %}
+<div class="grid">
+  {% for row in repair_rows %}
+  <div class="card">
+    <div style="font-weight:700; font-size:15px; margin-bottom:6px;">{{ row.name }}</div>
+    <div style="display:flex; gap:16px; font-size:13px;">
+      <span>{{ row.total }} ticket{{ 's' if row.total != 1 }}</span>
+      <span>{{ row.open }} open</span>
+      {% if row.ready %}<span class="badge badge-amber">{{ row.ready }} ready for pickup</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p style="color:var(--ink-faint);">No repairs in this date range yet.</p>
+{% endif %}
+
+<p style="margin-top:20px;"><a href="{{ url_for('reports.index') }}">← Back to detailed reports</a></p>
+{% endblock %}

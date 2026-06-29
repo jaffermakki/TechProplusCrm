@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Refunds{% endblock %}
+{% block page_title %}Refunds{% endblock %}
+
+{% block content %}
+<form method="GET" style="margin-bottom:16px; max-width:380px;">
+  <input type="search" name="q" value="{{ q }}" placeholder="Enter invoice number…">
+</form>
+
+{% if invoice %}
+<div class="card" style="margin-bottom:18px;">
+  <h3>Invoice {{ invoice.invoice_number }}</h3>
+  <p style="color:var(--ink-faint); font-size:13px;">{{ invoice.customer.name if invoice.customer else 'Walk-in' }} · {{ invoice.created_at|datetime }} · Total {{ invoice.total|money }}</p>
+  {% if invoice.total_refunded %}
+  <div class="alert alert-amber">Already refunded {{ invoice.total_refunded|money }} on this invoice.</div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('refunds.process_refund', invoice_id=invoice.id) }}">
+    {% include "_csrf.html" %}
+    <table>
+      <thead><tr><th>Item</th><th>Qty Sold</th><th>Unit Price</th><th>Refund Qty</th></tr></thead>
+      <tbody>
+        {% for item in invoice.items %}
+        <tr>
+          <td>{{ item.description }}</td>
+          <td class="mono">{{ item.qty }}</td>
+          <td class="mono">{{ item.unit_price|money }}</td>
+          <td><input type="number" name="refund_qty_{{ item.id }}" min="0" max="{{ item.qty }}" value="0" style="width:80px;"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="field checkbox-row" style="margin-top:12px;">
+      <input type="checkbox" name="restock" id="restock" checked><label for="restock" style="margin:0;">Restock returned items</label>
+    </div>
+    <div class="field"><label>Reason</label><input type="text" name="reason" placeholder="e.g. Customer changed mind"></div>
+    <button type="submit" class="btn btn-red">Process Refund</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Recent Refunds</h3>
+  <table>
+    <thead><tr><th>Invoice</th><th>Amount</th><th>Reason</th><th>When</th></tr></thead>
+    <tbody>
+      {% for r in recent_refunds %}
+      <tr>
+        <td class="mono">{{ r.invoice.invoice_number }}</td>
+        <td class="mono">{{ r.amount|money }}</td>
+        <td>{{ r.reason or '—' }}</td>
+        <td>{{ r.created_at|datetime }}</td>
+      </tr>
+      {% else %}<tr><td colspan="4" style="color:var(--ink-faint)">No refunds yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

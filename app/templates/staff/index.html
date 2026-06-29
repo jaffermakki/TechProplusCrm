@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Staff{% endblock %}
+{% block page_title %}Staff{% endblock %}
+{% block topbar_actions %}<a href="{{ url_for('staff.add_staff') }}" class="btn btn-primary btn-sm">+ Add Staff</a>{% endblock %}
+
+{% block content %}
+<div class="card card-flush">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for m in staff_list %}
+      <tr>
+        <td>{{ m.name }}</td>
+        <td style="text-transform:capitalize;">{{ m.role }}</td>
+        <td>{% if m.active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-gray">Disabled</span>{% endif %}</td>
+        <td style="white-space:nowrap;">
+          <a href="{{ url_for('staff.edit_staff', staff_id=m.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+          {% if m.id != current_user.id %}
+          <form method="POST" action="{{ url_for('staff.toggle_active', staff_id=m.id) }}" style="display:inline;">
+            {% include "_csrf.html" %}
+            <button type="submit" class="btn btn-secondary btn-sm">{{ 'Disable' if m.active else 'Enable' }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

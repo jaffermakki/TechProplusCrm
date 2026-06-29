@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Bulk Import{% endblock %}
+{% block page_title %}Bulk Import{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:760px;">
+  <p style="color:var(--ink-faint); font-size:13px;">
+    Paste supplier price-list text below — one product per line. Supports SKU, name, price, and quantity
+    in various spacing/pipe-delimited formats. Preview before confirming.
+  </p>
+  <form method="POST">
+    {% include "_csrf.html" %}
+    <div class="field">
+      <label>This delivery is for</label>
+      <select name="location_id" required>
+        <option value="">— Choose a location —</option>
+        {% for loc in locations %}
+        <option value="{{ loc.id }}" {{ 'selected' if selected_location_id|string == loc.id|string }}>{{ loc.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <textarea name="raw_text" rows="10" placeholder="IPHONE12-SCR | iPhone 12 Screen Black | 45.00 | qty:10">{{ raw_text }}</textarea>
+    </div>
+    <button type="submit" name="action" value="preview" class="btn btn-secondary">Preview</button>
+    {% if preview_rows %}
+    <button type="submit" name="action" value="confirm" class="btn btn-primary">Confirm Import ({{ preview_rows|length }} rows)</button>
+    {% endif %}
+  </form>
+
+  {% if preview_rows or errors %}
+  <div style="margin-top:20px;">
+    <h4>Preview</h4>
+    {% if preview_rows %}
+    <table>
+      <thead><tr><th>SKU</th><th>Name</th><th>Price</th><th>Qty</th></tr></thead>
+      <tbody>
+        {% for row in preview_rows %}
+        <tr><td class="mono">{{ row.sku or '(auto)' }}</td><td>{{ row.name }}</td><td class="mono">{{ row.price|money }}</td><td class="mono">{{ row.qty }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if errors %}
+    <div class="alert alert-red" style="margin-top:12px;">
+      {{ errors|length }} line(s) could not be parsed:
+      <ul>{% for e in errors %}<li>Line {{ e.line_no }}: "{{ e.raw }}" — {{ e.error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

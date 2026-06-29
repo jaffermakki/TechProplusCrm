@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}New Repair{% endblock %}
+{% block page_title %}New Repair Ticket{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:600px;">
+  <form method="POST">
+    {% include "_csrf.html" %}
+
+    <div class="field">
+      <label>Existing Customer</label>
+      <select name="customer_id" id="customer_id">
+        <option value="">— New customer —</option>
+        {% for c in customers %}
+        <option value="{{ c.id }}" data-phone="{{ c.phone }}">{{ c.name }} — {{ c.phone }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="new-customer-fields">
+      <div class="grid grid-2">
+        <div class="field"><label>Customer Name</label><input type="text" name="customer_name" id="customer_phone_input_name"></div>
+        <div class="field"><label>Phone</label><input type="text" name="customer_phone" id="customer_phone_input"></div>
+      </div>
+      <div class="field"><label>Email (optional)</label><input type="email" name="customer_email"></div>
+    </div>
+
+    <div id="warranty-alert-box"></div>
+
+    <div class="field"><label>Device</label><input type="text" name="device" placeholder="e.g. iPhone 13 Pro" required></div>
+    <div class="field"><label>Issue Description</label><textarea name="issue" rows="2" placeholder="What's wrong with it?"></textarea></div>
+    <div class="field"><label>Internal Notes (optional)</label><textarea name="description" rows="2" placeholder="Diagnostic notes, anything staff-only"></textarea></div>
+
+    <div class="grid grid-2">
+      <div class="field"><label>Estimated Cost (optional)</label><input type="number" name="estimated_cost" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="field"><label>Assigned Technician</label>
+        <select name="technician_id">
+          <option value="">— Unassigned —</option>
+          {% for t in technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="field"><label>Promised By (optional)</label><input type="date" name="promised_by"></div>
+      <div class="field"><label>Warranty Period (days)</label><input type="number" name="warranty_days" value="90" min="0"></div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg">Create Repair Ticket</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const sel = document.getElementById('customer_id');
+const newFields = document.getElementById('new-customer-fields');
+const phoneInput = document.getElementById('customer_phone_input');
+const warrantyBox = document.getElementById('warranty-alert-box');
+
+function toggle() { newFields.style.display = sel.value ? 'none' : 'block'; }
+sel.addEventListener('change', function () {
+  toggle();
+  warrantyBox.innerHTML = '';
+  const opt = sel.options[sel.selectedIndex];
+  if (sel.value && opt.dataset.phone) checkWarranty(opt.dataset.phone);
+});
+toggle();
+
+let lookupTimer = null;
+phoneInput.addEventListener('input', function () {
+  clearTimeout(lookupTimer);
+  const phone = this.value.trim();
+  if (phone.length < 7) { warrantyBox.innerHTML = ''; return; }
+  lookupTimer = setTimeout(() => checkWarranty(phone), 400);
+});
+
+function checkWarranty(phone) {
+  fetch(`{{ url_for('repairs.customer_lookup') }}?phone=${encodeURIComponent(phone)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.found) { warrantyBox.innerHTML = ''; return; }
+      let html = `<div class="alert alert-green" style="font-size:13px;">✓ Existing customer: <strong>${data.name}</strong> · ${data.loyalty_points} loyalty points</div>`;
+      if (data.warranty_alerts.length) {
+        html += `<div class="alert alert-amber" style="font-size:13px;">
+          ⚠️ <strong>Active warranty on ${data.warranty_alerts.length} previous repair${data.warranty_alerts.length !== 1 ? 's' : ''}:</strong><br>
+          ${data.warranty_alerts.map(a => `• Ticket #${a.ticket_no}: <strong>${a.device}</strong> — ${a.issue || ''} (${a.days_remaining} day${a.days_remaining !== 1 ? 's' : ''} remaining, expires ${a.expires_at})`).join('<br>')}
+          <br><span style="font-weight:700;">Confirm with the customer if this is a warranty return before creating a new ticket.</span>
+        </div>`;
+      }
+      warrantyBox.innerHTML = html;
+    })
+    .catch(() => { warrantyBox.innerHTML = ''; });
+}
+</script>
+{% endblock %}

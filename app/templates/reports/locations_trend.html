@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Location Trends{% endblock %}
+{% block page_title %}Location Trends{% endblock %}
+{% block page_sub %}<p class="page-sub">{{ start.strftime('%b %d, %Y') }} – {{ end.strftime('%b %d, %Y') }}</p>{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex; gap:8px; margin-bottom:14px;">
+  <a href="{{ url_for('reports.locations_trend', granularity='day', start=start.strftime('%Y-%m-%d'), end=end.strftime('%Y-%m-%d')) }}"
+     class="btn btn-sm {{ 'btn-primary' if granularity == 'day' else 'btn-secondary' }}">Day by Day</a>
+  <a href="{{ url_for('reports.locations_trend', granularity='month') }}"
+     class="btn btn-sm {{ 'btn-primary' if granularity == 'month' else 'btn-secondary' }}">Month by Month</a>
+</div>
+
+<form method="GET" class="grid grid-3" style="max-width:540px; margin-bottom:18px;">
+  <input type="hidden" name="granularity" value="{{ granularity }}">
+  <div class="field"><label>From</label><input type="date" name="start" value="{{ start.strftime('%Y-%m-%d') }}"></div>
+  <div class="field"><label>To</label><input type="date" name="end" value="{{ end.strftime('%Y-%m-%d') }}"></div>
+  <div class="field" style="align-self:end;"><button type="submit" class="btn btn-secondary btn-block">Apply</button></div>
+</form>
+
+<div class="card" style="margin-bottom:20px;">
+  <canvas id="trendChart" height="100"></canvas>
+</div>
+
+<div class="card card-flush">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'Day' if granularity == 'day' else 'Month' }}</th>
+          {% for series in trend.locations %}<th>{{ series.name }}</th>{% endfor %}
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label in trend.labels %}
+        {% set outer_idx = loop.index0 %}
+        <tr>
+          <td>{{ label }}</td>
+          {% for series in trend.locations %}
+          <td class="mono">${{ "%.2f"|format(series['values'][outer_idx]) }}</td>
+          {% endfor %}
+          <td class="mono" style="font-weight:700;">${{ "%.2f"|format(trend.totals[outer_idx]) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p style="margin-top:20px;"><a href="{{ url_for('reports.locations_overview') }}">← Back to locations snapshot</a></p>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const labels = {{ trend.labels|tojson }};
+const seriesData = {{ trend.locations|tojson }};
+const colors = ['#3D7DF2', '#F2A341', '#2BA866', '#E5484D', '#8A90A0', '#9B59B6'];
+
+const ctx = document.getElementById('trendChart').getContext('2d');
+new Chart(ctx, {
+  type: '{{ "bar" if granularity == "month" else "line" }}',
+  data: {
+    labels: labels,
+    datasets: seriesData.map((series, i) => ({
+      label: series.name,
+      data: series.values,
+      borderColor: colors[i % colors.length],
+      backgroundColor: colors[i % colors.length] + ('{{ "bar" if granularity == "month" else "line" }}' === 'bar' ? 'cc' : '22'),
+      tension: 0.3,
+      fill: '{{ "bar" if granularity == "month" else "line" }}' !== 'bar',
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { callback: (value) => '$' + value }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}
